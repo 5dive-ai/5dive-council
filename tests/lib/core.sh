@@ -34,3 +34,20 @@ exec "$core" "\$@"
 SHIM
   chmod 0755 "$ROOT/5dive"
 }
+
+# The one box fact core assumes and a CI runner lacks: the `claude` group. Core's state
+# setup (ensure_state, audit_init, tasks_db_init's root branch) runs an UNGUARDED
+# `chown root:claude` on the directories it creates, even under an isolated STATE_DIR,
+# so on a host with no such group every root path dies before it seals or inits:
+# `council init` reads "cannot seal genesis", `task init` "could not init the isolated
+# tasks store", and `agent list --json` fails the amend e2e's registry probe. Every
+# 5dive box has the group (the installer creates it before the first agent), so this is
+# a fixture the harnesses are owed, not a product path to test. CI provisions it
+# (.github/workflows/council.yml, "box fixture" step). Refusing here, loudly and by name,
+# is what keeps six opaque reds from reading as six council defects, and keeps a mutant
+# from going "red" for the fixture instead of for its mutation.
+council_box_fixture_check() {
+  getent group claude >/dev/null 2>&1 && return 0
+  echo "box fixture missing: no 'claude' group on this host. Core chowns its state dirs root:claude unguarded, so every sealing/task-store harness would fail for the fixture, not for council. Create it (sudo groupadd --system claude) and re-run." >&2
+  return 1
+}

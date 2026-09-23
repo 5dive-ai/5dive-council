@@ -17,8 +17,21 @@ TMP="$(mktemp -d "${TMPDIR:-/tmp}/council-mutants.XXXXXX")"
 trap 'rc=$?; rm -rf "$TMP"; echo "HARNESS-RC=$rc"' EXIT
 PASS=0; FAIL=0
 
+# A mutant's red only counts if the SAME harness is green on the unmutated tree:
+# on a host missing the box fixture, council_gate_e2e is red for the fixture, and M3
+# would "go red" having proved nothing. So each harness a mutant names is run once
+# unmutated first, and a baseline that is not green fails every mutant that uses it.
+declare -A BASE
+baseline() { # <harness> -> 0 green, 1 not
+  [[ -n "${BASE[$1]:-}" ]] || { if bash tests/run_all.sh "$1" >"$TMP/base-$1.log" 2>&1; then BASE[$1]=0; else BASE[$1]=1; fi; }
+  return "${BASE[$1]}"
+}
+
 mutant() { # <id> <file> <python-replace-old> <python-replace-new> <harness>
   local id="$1" file="$2" old="$3" new="$4" harness="$5" w="$TMP/$1"
+  if ! baseline "$harness"; then
+    FAIL=$((FAIL+1)); echo "FAIL $id: $harness is not green on the UNMUTATED tree, so its red on the mutant proves nothing ($(grep -m1 -E '^FAIL|fixture missing' "$TMP/base-$harness.log" | cut -c1-110))"; return
+  fi
   mkdir -p "$w"
   (cd "$ROOT" && tar --exclude=./.git --exclude=./.core --exclude=./.core-council --exclude=./5dive -cf - .) | (cd "$w" && tar -xf -)
   if ! python3 - "$w/$file" "$old" "$new" <<'PY'
@@ -48,10 +61,17 @@ mutant M3 council/src/council/cmd_council.template.sh \
   "_asked=\"\$(_council_task_json \"\$_cand\" | jq -r '.need_asked_at // empty' 2>/dev/null)\" || _asked=\"\"" \
   '_asked=""' \
   council_gate_e2e
+# M4 grades P4's template arm, which exists only while core still carries src/council. After
+# core deletes it (DIVE-4893) P4 skips that arm by design, so M4 cannot go red and is skipped
+# on the SAME condition, or core's unwire would turn this control red on council main.
+if [[ -f "$FIVEDIVE_CORE_DIR/src/council/engine.mjs" ]]; then
 mutant M4 council/src/council/cmd_council.template.sh \
   'COUNCIL_DIR="${STATE_DIR}/council"' \
   'COUNCIL_DIR="${STATE_DIR}/council"  # a quiet local edit' \
   council_plugin_unit
+else
+  echo "skip M4: core at $FIVEDIVE_CORE_DIR no longer carries src/council, so P4's template arm is skipped (post-unwire)"
+fi
 mutant M5 council/src/council/cmd_council.template.sh \
   "    st=\"\$(_council_task_json \"\$subj\" | jq -r '.status // empty' 2>/dev/null)\" || st=\"\"" \
   "    st=\"\$(db \"SELECT status FROM tasks WHERE ident=\$(sqlq \"\$subj\") LIMIT 1;\" 2>/dev/null)\"" \
