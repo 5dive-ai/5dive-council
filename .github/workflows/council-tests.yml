@@ -1,0 +1,48 @@
+name: council plugin
+
+# The whole repo is one plugin, so there is no path filter to get wrong.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: tools the harnesses need
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq jq sqlite3 openssl >/dev/null
+      # A manifest that does not parse breaks `5dive plugin add` at install
+      # time, where nobody is watching; the name/folder/source triple is trap D.
+      - name: manifests parse, and name = folder = marketplace source
+        run: |
+          jq -e . .claude-plugin/marketplace.json > /dev/null
+          jq -e . council/.claude-plugin/plugin.json > /dev/null
+          test "$(jq -r .name council/.claude-plugin/plugin.json)" = council
+          test "$(jq -r '.plugins[]|select(.name=="council")|.source' .claude-plugin/marketplace.json)" = ./council
+          test -x council/bin/council
+      - name: council/bin/council is generated, not hand-edited
+        run: node council/src/gen.mjs --check
+      # The plugin reaches core only through core's CLI, so the harnesses need a
+      # REAL core: main, built. `council` goes to this repo, everything else to it.
+      - name: build core (main)
+        run: |
+          git clone --depth 1 https://github.com/5dive-ai/5dive.git .core
+          (cd .core && ./build.sh)
+      # The last core that carried a built-in council. P5 seals a lineage with it
+      # and verifies it here (and the reverse), which is the promise to every box
+      # that sealed a council before the move. Pinned, so it never drifts.
+      - name: build core (last built-in council, fcd81d73)
+        run: |
+          git clone https://github.com/5dive-ai/5dive.git .core-council
+          (cd .core-council && git checkout -q fcd81d730104 && ./build.sh)
+      - name: council harnesses (29 carried from core + the plugin's own)
+        env:
+          FIVEDIVE_CORE_COUNCIL_DIR: ${{ github.workspace }}/.core-council
+        run: bash tests/run_all.sh
+      - name: mutants (the controls)
+        run: bash tests/council_mutants.sh

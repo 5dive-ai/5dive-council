@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "5dive-council",
+  "description": "The 5dive council plugin, published from its own repository. One plugin, one repo — the shape `5dive plugin add <owner>/<repo>` was built for.",
+  "owner": {
+    "name": "5dive",
+    "email": "support@5dive.com"
+  },
+  "plugins": [
+    {
+      "name": "council",
+      "description": "A sealed deliberation council for your agents: convene a panel on a question, run constitutional amendments and seat motions, give a founder a veto, and keep every verdict in a tamper-evident lineage.",
+      "category": "governance",
+      "source": "./council",
+      "homepage": "https://github.com/5dive-ai/5dive-council"
+    }
+  ]
+}

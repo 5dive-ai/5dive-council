@@ -1,0 +1,34 @@
+{
+  "name": "council",
+  "version": "1.0.0",
+  "description": "A sealed deliberation council: convene, ballots, seat motions, constitutional amendments, founder veto and a tamper-evident lineage. Core keeps the constitution and the human-gate floor; this plugin is the deliberation that amends them.",
+  "author": {
+    "name": "5dive",
+    "email": "support@5dive.com",
+    "url": "https://5dive.ai"
+  },
+  "homepage": "https://github.com/5dive-ai/5dive-council",
+  "license": "Apache-2.0",
+  "keywords": [
+    "council",
+    "governance",
+    "deliberation"
+  ],
+  "fivedive": {
+    "contract": "1",
+    "capabilities": [
+      "verb"
+    ],
+    "verbs": [
+      {
+        "name": "council",
+        "summary": "convene a sealed council, amend the constitution, exercise the founder veto"
+      }
+    ],
+    "trust": {
+      "publisher": "5dive",
+      "did": "did:key:5dive",
+      "review": "official"
+    }
+  }
+}
