@@ -1,5 +1,12 @@
 # Changes
 
+## Unreleased (DIVE-4893)
+
+- Test shim: `5dive --json council …` now reaches this plugin. The shim routed on `$1`, so a
+  leading `--json` sent the call to core, which answered with its own built-in council — part of
+  `council_roster_class_thresholds_e2e` and `council_schedule_e2e` was grading core, and both go
+  red against a core without council. `council_plugin_unit` P8 pins the routing.
+
 ## 1.0.0 — 2026-09-23 (DIVE-4891)
 
 - Council moves out of the 5dive core CLI into this repository (DIVE-4869 phase 2).

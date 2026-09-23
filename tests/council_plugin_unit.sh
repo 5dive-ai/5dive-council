@@ -23,6 +23,8 @@
 #                              entry trailer, wherever the flag sits.
 #   P7  the dry-run guard    — _mirror_send can never reach a human under
 #                              FIVEDIVE_NOTIFY_DRYRUN (DIVE-1500), carried verbatim.
+#   P8  the test shim        — `5dive --json council …` reaches THIS plugin, not core
+#                              (DIVE-4893: routing on $1 sent it to core's built-in council).
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/grading_tree.sh" \
   || printf 'grading tree: UNRESOLVED (tests/lib/grading_tree.sh not reachable; no tree named)\n' >&2
@@ -158,6 +160,22 @@ DL="$TMP/dry.log"
 out="$(FIVEDIVE_NOTIFY_DRYRUN=1 FIVEDIVE_NOTIFY_DRYRUN_LOG="$DL" bash -c 'source "$1"; _mirror_send tok 42 "" "hello" "{}"' _ "$BIN" 2>/dev/null)"
 t "P7 a dry-run send returns the synthetic ok" true "$(jq -r .dry_run <<<"$out" 2>/dev/null)"
 t "P7 ...logs the would-be payload, never the token" "1 0" "$(grep -c 'notify-dryrun chat=42' "$DL") $(grep -c tok "$DL")"
+
+# ---- P8 the test shim routes past a leading --json -------------------------------------------
+# Every carried harness drives `5dive`, which is this shim. Core strips a leading --json before it
+# dispatches, so `5dive --json council …` is a council call; a shim that routed on $1 sent it to
+# core, which answered with its OWN built-in council until core deleted it (DIVE-4893) — so part
+# of the carried suite was grading core, not this plugin. Drive the shim with a stub core that can
+# only say "core", and a stub plugin that can only say "plugin".
+mkdir -p "$TMP/p8/council/bin" "$TMP/p8/core"
+printf '#!/usr/bin/env bash\necho "plugin:$*"\n' > "$TMP/p8/council/bin/council"
+printf '#!/usr/bin/env bash\necho "core:$*"\n' > "$TMP/p8/core/5dive"
+chmod +x "$TMP/p8/council/bin/council" "$TMP/p8/core/5dive"
+( repo="$ROOT"; ROOT="$TMP/p8"; FIVEDIVE_CORE_DIR="$TMP/p8/core"; . "$repo/tests/lib/core.sh"; council_write_shim )
+t "P8 'council bench ls' reaches the plugin"          "plugin:bench ls"        "$("$TMP/p8/5dive" council bench ls)"
+t "P8 '--json council bench ls' reaches the plugin"   "plugin:--json bench ls" "$("$TMP/p8/5dive" --json council bench ls)"
+t "P8 'task ls --json' reaches core"                  "core:task ls --json"    "$("$TMP/p8/5dive" task ls --json)"
+t "P8 '--json task ls council' reaches core"          "core:--json task ls council" "$("$TMP/p8/5dive" --json task ls council)"
 
 printf '\ncouncil_plugin_unit: %d passed, %d failed, %d skipped\n' "$PASS" "$FAIL" "$SKIP"
 [[ "$FAIL" -eq 0 ]]
