@@ -61,10 +61,17 @@ mutant M3 council/src/council/cmd_council.template.sh \
   "_asked=\"\$(_council_task_json \"\$_cand\" | jq -r '.need_asked_at // empty' 2>/dev/null)\" || _asked=\"\"" \
   '_asked=""' \
   council_gate_e2e
+# M4 grades P4's template arm, which exists only while core still carries src/council. After
+# core deletes it (DIVE-4893) P4 skips that arm by design, so M4 cannot go red and is skipped
+# on the SAME condition, or core's unwire would turn this control red on council main.
+if [[ -f "$FIVEDIVE_CORE_DIR/src/council/engine.mjs" ]]; then
 mutant M4 council/src/council/cmd_council.template.sh \
   'COUNCIL_DIR="${STATE_DIR}/council"' \
   'COUNCIL_DIR="${STATE_DIR}/council"  # a quiet local edit' \
   council_plugin_unit
+else
+  echo "skip M4: core at $FIVEDIVE_CORE_DIR no longer carries src/council, so P4's template arm is skipped (post-unwire)"
+fi
 mutant M5 council/src/council/cmd_council.template.sh \
   "    st=\"\$(_council_task_json \"\$subj\" | jq -r '.status // empty' 2>/dev/null)\" || st=\"\"" \
   "    st=\"\$(db \"SELECT status FROM tasks WHERE ident=\$(sqlq \"\$subj\") LIMIT 1;\" 2>/dev/null)\"" \
