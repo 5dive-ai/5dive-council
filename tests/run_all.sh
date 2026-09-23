@@ -5,6 +5,7 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; cd "$ROOT"
 . tests/lib/core.sh
 council_write_shim || exit 1
+council_box_fixture_check || exit 1
 # The plugin calls core by NAME (`5dive gate-proof sign`, `5dive task show`), because on a box core
 # is always on PATH — it is what exec'd the plugin. A CI runner has no installed 5dive, so put the
 # shim first on PATH: harnesses that do not pin COUNCIL_5DIVE_BIN then reach the core under test,

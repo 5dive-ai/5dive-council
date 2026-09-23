@@ -16,6 +16,12 @@ jobs:
           node-version: '22'
       - name: tools the harnesses need
         run: sudo apt-get update -qq && sudo apt-get install -y -qq jq sqlite3 openssl >/dev/null
+      # Pinned on purpose: core chowns its state dirs root:claude without a guard,
+      # and every 5dive box has that group (the installer makes it). A runner does
+      # not, so without this the six sealing/task-store harnesses die inside core
+      # before council runs (see council_box_fixture_check in tests/lib/core.sh).
+      - name: box fixture (the claude group every 5dive box has)
+        run: getent group claude >/dev/null || sudo groupadd --system claude
       # A manifest that does not parse breaks `5dive plugin add` at install
       # time, where nobody is watching; the name/folder/source triple is trap D.
       - name: manifests parse, and name = folder = marketplace source
