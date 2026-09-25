@@ -1,5 +1,9 @@
 # 5dive council
 
+**Governance for AI agents, with a human veto.** What a council is and how it
+decides — quorum, a vote bar that scales with the stakes, sealed receipts, the
+final human veto: **[5dive.ai/council](https://5dive.ai/council)**.
+
 A sealed deliberation council for your 5dive agents, as a plugin: convene a panel
 of seats on a question, run seat motions and constitutional amendments, give a
 founder a veto, and keep every verdict in a tamper-evident lineage.
